@@ -1,92 +1,82 @@
-// Use D3 fetch to read the JSON file
-// The data from the JSON file is arbitrarily named importedData as the argument
-// d3.json("samples.json").then((importedData) => {
-//     console.log(importedData);
-//     var data = importedData;
 
-// function unpack(rows, index) {
-//     return rows.map(function(row) {
-//         return row[index];
-//     });
-// }
-
-d3.json("samples.json").then((data) => {
-    //  Create the Traces
-    var trace1 = {
-      x: data.organ,
-      y: data.survival.map(val => Math.sqrt(val)),
-      type: "box",
-      name: "Cancer Survival",
-      boxpoints: "all"
-    };
-  
-    // Create the data array for the plot
-    var data = [trace1];
-  
-    // Define the plot layout
-    var layout = {
-      title: "Square Root of Cancer Survival by Organ",
-      xaxis: { title: "Organ" },
-      yaxis: { title: "Square Root of Survival" }
-    };
-  
-    // Plot the chart to a div tag with id "plot"
-    Plotly.newPlot("plot", data, layout);
+function buildMetadata(sample) {
+  d3.json("samples.json").then(data => {
+    var metadata = data.metadata;
+    var resultList = metadata.filter(selection => selection.id == sample);
+    var result = resultList[0];
+    console.log("metadata", result);
+    var panel = d3.select("#sample-metadata");
+    panel.html("");
+    Object.entries(result).forEach(function([key, value]) {
+      panel.append("p").text(`${key}: ${value}`);
+    });
   });
-  
+}
+function buildCharts(sample) {
+  d3.json("samples.json").then(data => {
+    var samples = data.samples;
+    var resultList = samples.filter(selection => selection.id == sample);
+    var result = resultList[0];
+    var otu_ids = result.otu_ids;
+    var otu_labels = result.otu_labels;
+    var sample_values = result.sample_values;
+    console.log("chart data", result);
+    var yticks = otu_ids
+      .slice(0, 10)
+      .map(id => `OTU ${id}`)
+      .reverse();
+    var barChart = [
+      {
+        y: yticks,
+        x: sample_values.slice(0, 10).reverse(),
+        text: otu_labels.slice(0, 10).reverse(),
+        type: "bar",
+        orientation: "h"
+      }
+    ];
+    var barLayout = {
+      title: "Bacteria Cultures Found"
+    };
+    Plotly.newPlot("bar", barChart, barLayout);
+    var bubbleChart = [
+      {
+        x: otu_ids,
+        y: sample_values,
+        text: otu_labels,
+        mode: "markers",
+        marker: {
+          size: sample_values,
+          color: otu_ids,
+          colorscale: "Earth"
+        }
+      }
+    ];
+    var bubbleLayout = {
+      title: "Bacteria per Sample",
+      xaxis: { title: "OTU ID" }
+    };
+    Plotly.newPlot("bubble", bubbleChart, bubbleLayout);
+  });
+}
+function init() {
+  var dropDown = d3.select("#selDataset");
+  d3.json("samples.json").then(data => {
+    var sampleNames = data.names;
+    console.log(sampleNames);
+    sampleNames.forEach(function(sample) {
+      dropDown
+        .append("option")
+        .text(sample)
+        .property("value", sample);
+    });
+    var firstSample = sampleNames[0];
+    buildCharts(firstSample);
+    buildMetadata(firstSample);
+  });
+}
+function optionChanged(sample) {
+  buildCharts(sample);
+  buildMetadata(sample);
+}
+init();
 
-//     // Grab values from the data json object to build the plots
-//     var names = data.names;
-//     console.log(names);
-
-// //     // Create an array of the numbers
-//     var sampleValues = unpack(data.samples, 2);
-//     console.log(sampleValues);    
-//     // var otuLabels = Object.values(data.otu_labels);
-//     // var otuIds = Object.values(data.otu_ids);
-
-//     if (sampleValues === undefined) { return undefined;} // return undefined for undefined 
-//     if (sampleValues === null) { return null;} // null unchanged
-
-//     console.log(sampleValues);
-
-//     // Create an array of music provider labels
-//     var labels = Object.keys(data.us);
-
-//   // Sort the data array using the sample values
-//     data.sort(function(a, b) {
-//         return parseFloat(b.sample_values) - parseFloat(a.sample_values);
-//     });
-//   // Slice the first 10 objects for plotting
-//   data = data.slice(0, 10);
-
-//   // Reverse the array due to Plotly's defaults
-//   data = data.reverse();
-
-//   // Trace1 for the Sample Data
-//   var trace1 = {
-//     x: data.map(row => row.sample_values),
-//     y: data.map(row => row.otu_ids),
-//     text: data.map(row => row.otu_ids),
-//     name: "Samples",
-//     type: "bar",
-//     orientation: "h"
-//   };
-
-//   // data
-//   var chartData = [trace1];
-
-//   // Apply the group bar mode to the layout
-//   var layout = {
-//     title: "Sample value search results",
-//     margin: {
-//       l: 100,
-//       r: 100,
-//       t: 100,
-//       b: 100
-//     }
-//   };
-
-//   // Render the plot to the div tag with id "bar"
-//   Plotly.newPlot("bar", chartData, layout);
-// });
